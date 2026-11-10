@@ -138,6 +138,99 @@ class Brick(GameObject):
         else:
             self.canvas.itemconfig(self.item, fill=Brick.COLORS[self.hits])
 
+class Game(tk.Frame):
+    MAX_LIVES = 3
+
+    def __init__(self, master):
+        super(Game, self).__init__(master)
+        self.width = 610
+        self.height = 400
+        self.canvas = tk.Canvas(self, bg='#1a1a2e',
+                                width=self.width, height=self.height,
+                                highlightthickness=0)
+        self.canvas.pack()
+        self.pack()
+
+        # Kontrol: panah, tombol A/D, dan mouse. Spasi = mulai / main lagi.
+        self.canvas.bind('<Left>', lambda _: self.move_paddle(-25))
+        self.canvas.bind('<Right>', lambda _: self.move_paddle(25))
+        self.canvas.bind('<a>', lambda _: self.move_paddle(-25))
+        self.canvas.bind('<d>', lambda _: self.move_paddle(25))
+        self.canvas.bind('<Motion>', lambda e: self.move_paddle_to(e.x))
+        self.canvas.bind('<space>', lambda _: self.on_space())
+        # [BARU] Klik kiri = mulai / main lagi, klik kanan = jeda / lanjut
+        self.canvas.bind('<Button-1>', lambda _: self.on_space())
+        self.canvas.bind('<Button-3>', lambda _: self.toggle_pause())
+        self.canvas.config(cursor='none')   # [BARU] sembunyikan kursor di area game
+        # [BARU] Tombol jeda: P atau Esc
+        self.canvas.bind('<Return>', lambda _: self.toggle_pause())    # Enter
+        self.canvas.bind('<KP_Enter>', lambda _: self.toggle_pause())  # Enter di numpad
+        self.loop_id = None          # ID timer game_loop (untuk dibatalkan saat jeda)
+        self.canvas.focus_set()
+
+        self.new_game()
+
+    # ---------- Persiapan game ----------
+    def new_game(self):
+        """Reset semuanya: nyawa kembali 3, balok disusun ulang."""
+        self.canvas.delete('all')
+        self.items = {}
+        self.ball = None
+        self.lives = Game.MAX_LIVES
+        self.state = 'ready'   # ready / playing / paused / waiting / won / lost
+
+        self.paddle = Paddle(self.canvas, self.width / 2, 326)
+        self.items[self.paddle.item] = self.paddle
+
+        # 4 baris balok: ungu (3 hit), kuning (2 hit), hijau (1 hit) x2
+        for x in range(5, self.width - 5, 75):
+            self.add_brick(x + 37.5, 50, 3)
+            self.add_brick(x + 37.5, 70, 2)
+            self.add_brick(x + 37.5, 90, 1)
+            self.add_brick(x + 37.5, 110, 1)
+
+        self.draw_lives()
+        self.draw_text(self.width / 2, 385,
+                       'Mouse / Panah = gerak  |  Klik kiri = mulai  |  Enter / Klik kanan = Jeda', size=10, tag='hint')
+        self.prepare_round()
+
+    def prepare_round(self):
+        """Siapkan bola baru di atas paddle dan tunggu pemain menekan Spasi."""
+        self.add_ball()
+        self.draw_text(300, 200, 'Klik / Spasi untuk mulai', size=30, tag='msg')
+        self.state = 'ready'
+
+    def add_ball(self):
+        if self.ball is not None:
+            self.ball.delete()
+        pc = self.paddle.get_position()
+        x = (pc[0] + pc[2]) * 0.5
+        self.ball = Ball(self.canvas, x, 310)
+        self.paddle.set_ball(self.ball)
+
+    def add_brick(self, x, y, hits):
+        brick = Brick(self.canvas, x, y, hits)
+        self.items[brick.item] = brick
+
+    # ---------- Tampilan ----------
+    def draw_text(self, x, y, text, size=40, tag=None):
+        return self.canvas.create_text(x, y, text=text, font=('Forte', size),
+                                       fill='white', tags=tag or '')
+
+    def draw_lives(self):
+        """Gambar nyawa sebagai bulatan merah (sisa nyawa = jumlah bulatan)."""
+        self.canvas.delete('life')
+        self.canvas.create_text(40, 20, text='Nyawa:', font=('Forte', 12),
+                                fill='white', tags='life')
+        for i in range(self.lives):
+            x = 85 + i * 24
+            self.canvas.create_oval(x, 11, x + 16, 27, fill='#ff4d6d',
+                                    outline='white', tags='life')
+
+    def clear_message(self):
+        self.canvas.delete('msg')
+
+    
 
 
 

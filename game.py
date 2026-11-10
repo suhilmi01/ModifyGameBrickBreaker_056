@@ -230,7 +230,82 @@ class Game(tk.Frame):
     def clear_message(self):
         self.canvas.delete('msg')
 
-    
+    # ---------- Alur game ----------
+    def on_space(self):
+        if self.state == 'ready':
+            self.start_game()
+        elif self.state in ('won', 'lost'):
+            self.new_game()          # main lagi dari awal
+
+    def move_paddle(self, offset):
+        # Paddle tidak boleh bergerak saat game dijeda
+        if self.state != 'paused':
+            self.paddle.move(offset)
+
+    def move_paddle_to(self, x):
+        if self.state != 'paused':
+            self.paddle.move_to(x)
+
+    def toggle_pause(self):
+        """[BARU] Jeda / lanjutkan game dengan Enter."""
+        if self.state == 'playing':
+            self.state = 'paused'
+            if self.loop_id is not None:
+                self.after_cancel(self.loop_id)   # hentikan timer loop
+                self.loop_id = None
+            self.draw_text(300, 180, 'JEDA', tag='pause')
+            self.draw_text(300, 230, 'Tekan Enter untuk lanjut', size=18, tag='pause')
+        elif self.state == 'paused':
+            self.canvas.delete('pause')
+            self.state = 'playing'
+            self.game_loop()                      # lanjutkan loop
+
+    def start_game(self):
+        self.clear_message()
+        self.paddle.ball = None      # bola lepas dari paddle
+        self.state = 'playing'
+        self.game_loop()
+
+    def game_loop(self):
+        if self.state != 'playing':
+            return
+        self.check_collisions()
+
+        if len(self.canvas.find_withtag('brick')) == 0:
+            self.state = 'won'
+            self.draw_text(300, 180, 'You win!', tag='msg')
+            self.draw_text(300, 230, 'Klik / Spasi untuk main lagi', size=18, tag='msg')
+        elif self.ball.get_position()[3] >= self.height:
+            self.lose_life()
+        else:
+            self.ball.update()
+            self.loop_id = self.after(30, self.game_loop)
+
+    def lose_life(self):
+        self.lives -= 1
+        self.draw_lives()
+        if self.lives <= 0:
+            self.state = 'lost'
+            self.draw_text(300, 180, 'Game Over!', tag='msg')
+            self.draw_text(300, 230, 'Klik / Spasi untuk main lagi', size=18, tag='msg')
+        else:
+            self.state = 'waiting'
+            # Jeda 1 detik, lalu bola baru muncul di paddle
+            self.after(1000, self.prepare_round)
+
+    def check_collisions(self):
+        ball_coords = self.ball.get_position()
+        items = self.canvas.find_overlapping(*ball_coords)
+        objects = [self.items[x] for x in items if x in self.items]
+        self.ball.collide(objects)
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    root.title('Hello, Jarvis!')
+    root.resizable(False, False)
+    game = Game(root)
+    game.mainloop()
 
 
 

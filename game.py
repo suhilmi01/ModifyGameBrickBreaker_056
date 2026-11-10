@@ -85,5 +85,59 @@ class Ball(GameObject):
                 if self.speed < self.max_speed:
                     self.speed += 0.15          # [DIUBAH] percepatan per balok 0.1 -> 0.15
 
+class Paddle(GameObject):
+    def __init__(self, canvas, x, y):
+        self.width = 100
+        self.height = 10
+        self.ball = None
+        item = canvas.create_rectangle(x - self.width / 2, y - self.height / 2,
+                                       x + self.width / 2, y + self.height / 2,
+                                       fill='#ff9f1c', outline='white')
+        super(Paddle, self).__init__(canvas, item)
+
+    def set_ball(self, ball):
+        self.ball = ball
+
+    def move(self, offset):
+        coords = self.get_position()
+        width = self.canvas.winfo_width()
+        if coords[0] + offset >= 0 and coords[2] + offset <= width:
+            super(Paddle, self).move(offset, 0)
+            if self.ball is not None:       # bola ikut bergerak sebelum game mulai
+                self.ball.move(offset, 0)
+
+    def move_to(self, x):
+        """Pindahkan paddle ke posisi x (untuk kontrol mouse), tetap di dalam layar."""
+        coords = self.get_position()
+        width = self.canvas.winfo_width()
+        center = (coords[0] + coords[2]) * 0.5
+        offset = x - center
+        offset = max(-coords[0], min(width - coords[2], offset))  # batasi ke layar
+        if offset != 0:
+            super(Paddle, self).move(offset, 0)
+            if self.ball is not None:
+                self.ball.move(offset, 0)
+
+class Brick(GameObject):
+    # Warna menurut sisa nyawa balok: 1 = hijau, 2 = kuning, 3 = ungu
+    COLORS = {1: '#2ecc71', 2: '#f1c40f', 3: '#9b59b6'}
+
+    def __init__(self, canvas, x, y, hits):
+        self.width = 75
+        self.height = 20
+        self.hits = hits
+        item = canvas.create_rectangle(x - self.width / 2, y - self.height / 2,
+                                       x + self.width / 2, y + self.height / 2,
+                                       fill=Brick.COLORS[hits], tags='brick')
+        super(Brick, self).__init__(canvas, item)
+
+    def hit(self):
+        self.hits -= 1
+        if self.hits <= 0:
+            self.delete()
+        else:
+            self.canvas.itemconfig(self.item, fill=Brick.COLORS[self.hits])
+
+
 
 
